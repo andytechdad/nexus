@@ -4,11 +4,12 @@ import org.apache.commons.cli.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.*;
+import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.entity.*;
+import org.apache.http.entity.BufferedHttpEntity;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClients;
@@ -18,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -25,13 +27,14 @@ import java.io.InputStream;
 
 public class NexusUploader {
 
-    private static final Logger log = LogManager.getLogger("nexus-cli");
+    private static final Logger LOGGER = LogManager.getLogger("nexus-cli");
+    private static final String NEXUS = "nexus";
 
     public static void main(String[] arguments) {
 
         Options options = new Options();
 
-        Option sourcefile_arg = Option.builder("f")
+        Option sourcefileArg = Option.builder("f")
                 .longOpt("file")
                 .desc("File to Upload")
                 .hasArg()
@@ -39,67 +42,63 @@ public class NexusUploader {
                 .required()
                 .build();
 
-        Option nexus_arg = Option.builder("n")
-                .longOpt("nexus")
+        Option nexusArg = Option.builder("n")
+                .longOpt(NEXUS)
                 .desc("Nexus URL")
                 .hasArg()
-                .argName("nexus")
+                .argName(NEXUS)
                 .required()
                 .build();
 
-        options.addOption(sourcefile_arg);
-        options.addOption(nexus_arg);
+        options.addOption(sourcefileArg);
+        options.addOption(nexusArg);
 
-        System.out.println("Nexus CLI: Upload a file to Nexus");
+        LOGGER.debug("Nexus CLI: Upload a file to Nexus");
 
         CommandLineParser parser = new DefaultParser();
 
         try {
 
-            CommandLine args = parser.parse( options, arguments);
+            CommandLine args = parser.parse(options, arguments);
 
-            String sourcefile = args.getOptionValue( "file" );
-            String nexusurl = args.getOptionValue( "nexus" );
-            String destinationurl = nexusurl + "/" + sourcefile;
+            String sourcefile = args.getOptionValue("file");
+            String nexusUrl = args.getOptionValue(NEXUS);
+            String destinationUrl = nexusUrl + "/" + sourcefile;
 
-            log.debug(new ParameterizedMessage("Source file is {}", sourcefile));
-            log.debug(new ParameterizedMessage("Nexus URL is {}", nexusurl));
+            LOGGER.debug(new ParameterizedMessage("Source file is {}", sourcefile));
+            LOGGER.debug(new ParameterizedMessage("Nexus URL is {}", nexusUrl));
 
-            File f_sourcefile = new File(sourcefile);
+            File file = new File(sourcefile);
 
-            if (f_sourcefile.isFile()) {
-                log.info(new ParameterizedMessage("Preparing to upload {} to {}", f_sourcefile.getAbsoluteFile(), nexusurl));
+            if (file.isFile()) {
+                LOGGER.info(new ParameterizedMessage("Preparing to upload {} to {}", file.getAbsoluteFile(), nexusUrl));
 
-                try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
+                try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
 
                     CredentialsProvider provider = new BasicCredentialsProvider();
                     UsernamePasswordCredentials credentials = new UsernamePasswordCredentials("admin", "admin123");
                     provider.setCredentials(AuthScope.ANY, credentials);
 
                     HttpClientContext context = HttpClientContext.create();
-
                     context.setCredentialsProvider(provider);
 
-                    InputStream loadedSourceFile = new FileInputStream(f_sourcefile);
-
-                    InputStreamEntity memory = new InputStreamEntity(loadedSourceFile);
-
+                    InputStream loadedSourcefile = new FileInputStream(file);
+                    InputStreamEntity memory = new InputStreamEntity(loadedSourcefile);
                     BufferedHttpEntity data = new BufferedHttpEntity(memory);
 
                     // build http request and assign multipart upload data
                     HttpUriRequest request = RequestBuilder
-                            .put(destinationurl)
+                            .put(destinationUrl)
                             .setEntity(data)
                             .build();
 
-                    log.debug(request);
-
-                    log.info(new ParameterizedMessage("Executing request {}",request.getRequestLine()));
+                    LOGGER.debug(request);
+                    LOGGER.info(new ParameterizedMessage("Executing request {}", request.getRequestLine()));
 
                     // Create a custom response handler
                     ResponseHandler<String> responseHandler = response -> {
                         int status = response.getStatusLine().getStatusCode();
-                        log.debug(status);
+                        LOGGER.debug(status);
                         if (status >= 200 && status < 300) {
                             HttpEntity entity = response.getEntity();
                             return entity != null ? EntityUtils.toString(entity) : null;
@@ -108,35 +107,21 @@ public class NexusUploader {
                         }
                     };
 
-                    httpclient.execute(request, responseHandler, context);
+                    httpClient.execute(request, responseHandler, context);
 
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.debug(e.getMessage());
                 }
-
-
             }
-
-        }
-
-        catch ( ParseException parseerror ) {
-
-            log.error("Unable to parse arguments correctly, see help");
-
-            log.error(parseerror);
+        } catch (ParseException e) {
+            LOGGER.error("Unable to parse arguments correctly, see help");
+            LOGGER.error(e);
 
             HelpFormatter formatter = new HelpFormatter();
-
             formatter.printHelp("java -jar nexus-cli.jar", options);
-
-            System.exit(1);
-
-        }
-
-        finally {
-
-            System.exit(0);
-
+            System.exit(1); // probably not needed
+        } finally {
+            System.exit(0); // probably not needed, end of programme anyway
         }
     }
 
