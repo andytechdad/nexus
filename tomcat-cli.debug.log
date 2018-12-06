@@ -1,0 +1,7 @@
+2018-12-06 17:17:05.053 [main] DEBUG nexus-cli - Nexus CLI: Upload a file to Nexus
+2018-12-06 17:17:05.058 [main] DEBUG nexus-cli - Source file is text.log
+2018-12-06 17:17:05.059 [main] DEBUG nexus-cli - Nexus URL is http://nexus:8081/repository/Software/nexus-cli/logs
+2018-12-06 17:17:05.059 [main] INFO  nexus-cli - Preparing to upload /Users/andytechdad/code/java/nexus/text.log to http://nexus:8081/repository/Software/nexus-cli/logs
+2018-12-06 17:17:05.346 [main] DEBUG nexus-cli - PUT http://nexus:8081/repository/Software/nexus-cli/logs/text.log HTTP/1.1
+2018-12-06 17:17:05.347 [main] INFO  nexus-cli - Executing request PUT http://nexus:8081/repository/Software/nexus-cli/logs/text.log HTTP/1.1
+2018-12-06 17:17:10.745 [main] DEBUG nexus-cli - 201
